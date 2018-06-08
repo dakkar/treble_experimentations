@@ -14,6 +14,8 @@ fi
 
 ## handle command line arguments
 
+read -p "Do you want to sync? " choice 
+
 function help() {
     cat <<EOF
 Syntax:
@@ -299,11 +301,13 @@ if [[ -z "$mainrepo" || ${#variant_codes[*]} -eq 0 ]]; then
     exit 1
 fi
 
+if [[ $choice == *"y"* ]];then
 init_release
 init_main_repo
 init_local_manifest
 init_patches
 sync_repo
+fi
 patch_things
 
 . build/envsetup.sh
