@@ -40,11 +40,11 @@ sub variants_help_text($self) {
 
     my @examples;
     for my $part ($self->{variant_parts}->@*) {
-        $variants_text .= sprintf " * %s\n",$part->{name};
+        $variants_text .= sprintf "* %s\n",$part->{name};
         my @value_names = sort keys $part->{values}->%*;
         for my $value_name (@value_names) {
             my $value = $part->{values}{$value_name};
-            $variants_text .= sprintf "  * '%s' %s\n",
+            $variants_text .= sprintf " * '%s' %s\n",
                 $value_name, $value->{desc};
         }
 
@@ -92,7 +92,7 @@ sub parse_variant($self,$raw) {
         $ret .= $value->{map};
     }
 
-    return $ret;
+    return [$ret,$raw];
 }
 
 sub error($self,$message) {

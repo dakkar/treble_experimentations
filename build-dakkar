@@ -18,18 +18,25 @@ use lib $libdir;
 use Dakkar::PerlFlavour;
 use Dakkar::PlatformInfo;
 use Dakkar::Getopt;
-#use Dakkar::RepoTools;
-#use Dakkar::BuildTools;
+use Dakkar::BuildTools;
 
 my %options = (
+    pretend => {
+        short => 'p', long => 'pretend',
+        desc => "don't actually run any command, print what would be done",
+    },
     jobs => {
         short => 'j', long => 'jobs', type => '=i',
         desc => 'number of parallel make workers',
         default => Dakkar::PlatformInfo->num_cpus,
     },
     no_sync => {
-        short => 'n', long => 'no-sync',
+        short => 'S', long => 'no-sync',
         desc => 'do not sync all repositories before building',
+    },
+    no_patch => {
+        short => 'P', long => 'no-patch',
+        desc => 'do not generate / apply patches before building',
     },
     release => {
         short => 'r', long => 'release', type => '=s',
@@ -132,8 +139,8 @@ my @variant_parts = (
     {
         name => 'partition layout',
         values => {
-            aonly => { desc => 'A', map => 'a' },
-            ab => { desc => 'A/B', map => 'b' },
+            aonly => { desc => 'for A devices', map => 'a' },
+            ab => { desc => 'for A/B devices', map => 'b' },
         },
     },
     {
@@ -141,7 +148,7 @@ my @variant_parts = (
         values => {
             vanilla => { desc => 'to not include extra applications', map => 'v' },
             gapps => { desc => 'to include opengapps', map => 'g' },
-            go => { desc => 'to include gaaps go', map => 'o' },
+            go => { desc => 'to include gapps go', map => 'o' },
             floss => { desc => 'to include FLOSS applications', map => 'f' },
         },
     },
@@ -160,5 +167,16 @@ my $getopt = Dakkar::Getopt->new({
     variant_parts => \@variant_parts,
 });
 
-my $options = $getopt->parse_opts(@ARGV) or exit 1;
-use Data::Dumper;say Data::Dumper::Dumper($options);
+my $parsed_options = $getopt->parse_opts(@ARGV) or exit 1;
+
+my $build = Dakkar::BuildTools->new({
+    basedir => $thisdir,
+    $parsed_options->%{qw(pretend jobs release variants)},
+    $rom_types{$parsed_options->{rom_type}}->%*,
+});
+
+$build->init;
+$build->sync unless $parsed_options->{no_sync};
+$build->patch unless $parsed_options->{no_patch};
+
+$build->build;
