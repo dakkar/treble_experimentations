@@ -1,0 +1,164 @@
+#!/usr/bin/env perl
+use strict;
+use warnings;
+use 5.022;
+
+# find out where this script lives, and add the directory with the
+# various components to the search path
+use File::Basename ();
+use Cwd ();
+my $thisdir;my $libdir;
+BEGIN {
+    (undef,$thisdir,undef) = File::Basename::fileparse(Cwd::abs_path(__FILE__));
+    $libdir = "${thisdir}build-dakkar-lib";
+}
+use lib $libdir;
+
+# load the components
+use Dakkar::PerlFlavour;
+use Dakkar::PlatformInfo;
+use Dakkar::Getopt;
+#use Dakkar::RepoTools;
+#use Dakkar::BuildTools;
+
+my %options = (
+    jobs => {
+        short => 'j', long => 'jobs', type => '=i',
+        desc => 'number of parallel make workers',
+        default => Dakkar::PlatformInfo->num_cpus,
+    },
+    no_sync => {
+        short => 'n', long => 'no-sync',
+        desc => 'do not sync all repositories before building',
+    },
+    release => {
+        short => 'r', long => 'release', type => '=s',
+        desc => 'name of the release to build',
+        default => Dakkar::PlatformInfo->today,
+    },
+);
+
+my %rom_types = (
+    aosp80 => {
+        mainrepo => 'https://android.googlesource.com/platform/manifest',
+        mainbranch => 'android-vts-8.0_r4',
+        localManifestBranch => 'master',
+    },
+    aosp81 => {
+        mainrepo => 'https://android.googlesource.com/platform/manifest',
+        mainbranch => 'android-8.1_r29',
+        localManifestBranch => 'android-8.1',
+    },
+    carbon => {
+        mainrepo => 'https://github.com/CarbonROM/android',
+        mainbranch => 'cr-6.1',
+        localManifestBranch => 'android-8.1',
+        treble_generate => 'carbon',
+        extra_make_options => 'WITHOUT_CHECK_API=true',
+    },
+    lineage => {
+        mainrepo => 'https://github.com/LineageOS/android.git',
+        mainbranch => 'lineage-15.1',
+        localManifestBranch => 'android-8.1',
+        treble_generate => 'lineage',
+        extra_make_options => 'WITHOUT_CHECK_API=true',
+    },
+    rr => {
+        mainrepo => 'https://github.com/ResurrectionRemix/platform_manifest.git',
+        mainbranch => 'oreo',
+        localManifestBranch => 'android-8.1',
+        treble_generate => 'rr',
+        extra_make_options => 'WITHOUT_CHECK_API=true',
+    },
+    pixel => {
+        mainrepo => 'https://github.com/PixelExperience/manifest',
+        mainbranch => 'oreo-mr1',
+        localManifestBranch => 'android-8.1',
+        treble_generate => 'pixel',
+        extra_make_options => 'WITHOUT_CHECK_API=true',
+    },
+    crdroid => {
+        mainrepo => 'https://github.com/crdroidandroid/android',
+        mainbranch => '8.1',
+        localManifestBranch => 'android-8.1',
+        treble_generate => 'crdroid',
+        extra_make_options => 'WITHOUT_CHECK_API=true',
+    },
+    mokee => {
+        mainrepo => 'https://github.com/MoKee/android.git',
+        mainbranch => 'mko-mr1',
+        localManifestBranch => 'android-8.1',
+        treble_generate => 'mokee',
+        extra_make_options => 'WITHOUT_CHECK_API=true',
+    },
+    aicp => {
+        mainrepo => 'https://github.com/AICP/platform_manifest.git',
+        mainbranch => 'o8.1',
+        localManifestBranch => 'android-8.1',
+        treble_generate => 'aicp',
+        extra_make_options => 'WITHOUT_CHECK_API=true',
+    },
+    aokp => {
+        mainrepo => 'https://github.com/AOKP/platform_manifest.git',
+        mainbranch => 'oreo',
+        localManifestBranch => 'android-8.1',
+        treble_generate => 'aokp',
+        extra_make_options => 'WITHOUT_CHECK_API=true',
+    },
+    aex => {
+        mainrepo => 'https://github.com/AospExtended/manifest.git',
+        mainbranch => '8.1.x',
+        localManifestBranch => 'android-8.1',
+        treble_generate => 'aex',
+        extra_make_options => 'WITHOUT_CHECK_API=true',
+    },
+    slim => {
+        mainrepo => 'git://github.com/SlimRoms/platform_manifest.git ',
+        mainbranch => 'or8.1',
+        localManifestBranch => 'android-8.1',
+        treble_generate => 'slim',
+        extra_make_options => 'WITHOUT_CHECK_API=true',
+    },
+);
+
+my @variant_parts = (
+    {
+        name => 'processor type',
+        values => {
+            arm => { desc => 'for ARM 32 bit', map => 'treble_arm_' },
+            arm64 => { desc => 'for ARM 64 bit', map => 'treble_arm64_' },
+        },
+    },
+    {
+        name => 'partition layout',
+        values => {
+            aonly => { desc => 'A', map => 'a' },
+            ab => { desc => 'A/B', map => 'b' },
+        },
+    },
+    {
+        name => 'application selection',
+        values => {
+            vanilla => { desc => 'to not include extra applications', map => 'v' },
+            gapps => { desc => 'to include opengapps', map => 'g' },
+            go => { desc => 'to include gaaps go', map => 'o' },
+            floss => { desc => 'to include FLOSS applications', map => 'f' },
+        },
+    },
+    {
+        name => 'su selection',
+        values => {
+            su => { desc => 'to include su', map => 'S' },
+            nosu => { desc => 'to not include su', map => 'N' },
+        },
+    },
+);
+
+my $getopt = Dakkar::Getopt->new({
+    options => \%options,
+    rom_types => \%rom_types,
+    variant_parts => \@variant_parts,
+});
+
+my $options = $getopt->parse_opts(@ARGV) or exit 1;
+use Data::Dumper;say Data::Dumper::Dumper($options);
