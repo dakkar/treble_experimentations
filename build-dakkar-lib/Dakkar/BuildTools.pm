@@ -170,7 +170,7 @@ sub build_variant($self,$variant) {
         },
         <<'SH',
 . build/envsetup.sh
-lunch "$name"
+lunch "${name}-userdebug"
 make $extra_make_options BUILD_NUMBER="$release" installclean
 make $extra_make_options BUILD_NUMBER="$release" -j "$jobs" systemimage
 make $extra_make_options BUILD_NUMBER="$release" vndk-test-sepolicy
