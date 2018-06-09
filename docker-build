@@ -1,0 +1,11 @@
+#!/bin/bash
+
+output="$1"
+shift
+
+exec docker run -ti \
+     -v "$(pwd)":/treble \
+     -v "$output":/treble_output \
+     -w /treble_output \
+     treble \
+     /usr/bin/perl /treble/build-dakkar "$@"
