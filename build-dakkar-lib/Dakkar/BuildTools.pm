@@ -142,6 +142,7 @@ sub patch($self) {
     if (my $generate = $self->{treble_generate}) {
         $self->_shell(\%env_for_shell, <<'SH');
 rm -f device/*/sepolicy/common/private/genfs_contexts
+( cd vendor/foss; git clean -fdx; bash update.sh )
 bash "$basedir"/apply-patches.sh patches
 SH
     }
