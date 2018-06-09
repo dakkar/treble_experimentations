@@ -80,30 +80,73 @@ sub sync($self) {
     );
 }
 
+
+my %apps_script = (
+    gapps => 'device/phh/treble/gapps.mk',
+    go => 'device/phh/treble/gapps-go.mk',
+    floss => 'vendor/foss/foss.mk',
+    custom => 'custom-apps.mk',
+);
+sub generate_variant($self,$variant) {
+    open my $fh,'>',"device/phh/treble/$variant->{name}.mk";
+
+    print $fh "\$(call inherit-product, device/phh/treble/base-pre.mk)\n";
+    print $fh "include build/make/target/product/treble_common.mk\n";
+
+    my $vndk = $variant->{cpu} eq 'arm' ? 'vndk-binder32.mk' : 'vndk.mk';
+    print $fh "\$(call inherit-product, vendor/vndk/$vndk)\n";
+
+    print $fh "\$(call inherit-product, device/phh/treble/base.mk)\n";
+
+    if (my $apps_script = $apps_script{$variant->{apps}}) {
+        print $fh "\$(call inherit-product, $apps_script)\n";
+    }
+
+    if (my $rom = $self->{treble_generate}) {
+        print $fh "\$(call inherit-product, device/phh/treble/${rom}.mk)\n";
+    }
+
+    print $fh "PRODUCT_NAME := $variant->{name}\n";
+    my $part_suffix = $variant->{partition} eq 'aonly' ? 'a' : 'ab';
+    print $fh "PRODUCT_DEVICE := phhgsi_$variant->{cpu}_${part_suffix}\n";
+    print $fh "PRODUCT_BRAND := Android\n";
+    print $fh "PRODUCT_MODEL := Phh-Treble $variant->{apps}\n";
+
+    if ($variant->{su} eq 'su') {
+        print $fh "PRODUCT_PACKAGES += phh-su\n";
+    }
+}
+
+sub generate($self) {
+    $self->_shell({},<<'SH');
+cd device/phh/treble
+git clean -fdx
+SH
+
+    open my $fh, '>','device/phh/treble/AndroidProducts.mk';
+    print $fh "PRODUCT_MAKEFILES := \\\n";
+
+    for my $variant ($self->{variants}->@*) {
+        $self->generate_variant($variant);
+        print $fh "\t\$(LOCAL_DIR)/$variant->{name}.mk \\\n";
+    }
+
+    print $fh "\n";
+}
+
 sub patch($self) {
     my %env_for_shell = (
-        generate => $self->{treble_generate},
         basedir => $self->{basedir},
         release => $self->{release},
     );
     if (my $generate = $self->{treble_generate}) {
         $self->_shell(\%env_for_shell, <<'SH');
 rm -f device/*/sepolicy/common/private/genfs_contexts
-(
-  cd device/phh/treble
-  git clean -fdx
-  bash generate.sh "$generate"
-)
 bash "$basedir"/apply-patches.sh patches
 SH
     }
     else {
         $self->_shell(\%env_for_shell, <<'SH');
-(
-  cd device/phh/treble
-  git clean -fdx
-  bash generate.sh
-)
 repo manifest -r > release/"$release"/manifest.xml
 bash "$basedir"/list-patches.sh
 cp patches.zip release/"$release"/patches.zip
@@ -111,16 +154,15 @@ SH
     }
 }
 
-sub build_variant($self,$variant_code,$variant_name) {
+sub build_variant($self,$variant) {
     $self->_shell(
         {
             $self->%{qw(jobs release extra_make_options)},
-            name => $variant_name,
-            code => $variant_code,
+            name => $variant->{name},
         },
         <<'SH',
 . build/envsetup.sh
-lunch "$code"
+lunch "$name"
 make $extra_make_options BUILD_NUMBER="$release" installclean
 make $extra_make_options BUILD_NUMBER="$release" -j "$jobs" systemimage
 make $extra_make_options BUILD_NUMBER="$release" vndk-test-sepolicy
@@ -131,7 +173,7 @@ SH
 
 sub build($self) {
     for my $variant ($self->{variants}->@*) {
-        $self->build_variant($variant->@*)
+        $self->build_variant($variant);
     }
 }
 

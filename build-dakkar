@@ -36,7 +36,15 @@ my %options = (
     },
     no_patch => {
         short => 'P', long => 'no-patch',
-        desc => 'do not generate / apply patches before building',
+        desc => 'do not apply patches before building',
+    },
+    no_generate => {
+        short => 'G', long => 'no-generate',
+        desc => 'do not generate makefiles before building',
+    },
+    no_build => {
+        short => 'B', long => 'no-build',
+        desc => 'do not build',
     },
     release => {
         short => 'r', long => 'release', type => '=s',
@@ -130,30 +138,35 @@ my %rom_types = (
 
 my @variant_parts = (
     {
-        name => 'processor type',
+        name => 'cpu',
+        desc => 'processor type',
         values => {
-            arm => { desc => 'for ARM 32 bit', map => 'treble_arm_' },
-            arm64 => { desc => 'for ARM 64 bit', map => 'treble_arm64_' },
+            arm => { desc => 'for ARM 32 bit' },
+            arm64 => { desc => 'for ARM 64 bit' },
         },
     },
     {
-        name => 'partition layout',
+        name => 'partition',
+        desc => 'partition layout',
         values => {
-            aonly => { desc => 'for A devices', map => 'a' },
-            ab => { desc => 'for A/B devices', map => 'b' },
+            aonly => { desc => 'for A devices' },
+            ab => { desc => 'for A/B devices' },
         },
     },
     {
-        name => 'application selection',
+        name => 'apps',
+        desc => 'application selection',
         values => {
-            vanilla => { desc => 'to not include extra applications', map => 'v' },
-            gapps => { desc => 'to include opengapps', map => 'g' },
-            go => { desc => 'to include gapps go', map => 'o' },
-            floss => { desc => 'to include FLOSS applications', map => 'f' },
+            vanilla => { desc => 'to not include extra applications' },
+            gapps => { desc => 'to include opengapps' },
+            go => { desc => 'to include gapps go' },
+            floss => { desc => 'to include FLOSS applications' },
+            custom => { desc => 'include your own custom-apps.mk' },
         },
     },
     {
-        name => 'su selection',
+        name => 'su',
+        desc => 'su selection',
         values => {
             su => { desc => 'to include su', map => 'S' },
             nosu => { desc => 'to not include su', map => 'N' },
@@ -171,12 +184,12 @@ my $parsed_options = $getopt->parse_opts(@ARGV) or exit 1;
 
 my $build = Dakkar::BuildTools->new({
     basedir => $thisdir,
-    $parsed_options->%{qw(pretend jobs release variants)},
+    $parsed_options->%{qw(pretend jobs release variants rom_type)},
     $rom_types{$parsed_options->{rom_type}}->%*,
 });
 
 $build->init;
 $build->sync unless $parsed_options->{no_sync};
 $build->patch unless $parsed_options->{no_patch};
-
-$build->build;
+$build->generate unless $parsed_options->{no_generate};
+$build->build unless $parsed_options->{no_build};

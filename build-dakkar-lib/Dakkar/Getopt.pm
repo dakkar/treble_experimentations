@@ -85,14 +85,16 @@ sub getopt_spec($self) {
 sub parse_variant($self,$raw) {
     my @parts = split /-/,$raw;
 
-    my $ret;
+    my %ret = (
+        name => $raw,
+    );
     for my $part_spec ($self->{variant_parts}->@*) {
         my $input_part = shift @parts or return;
         my $value = $part_spec->{values}{$input_part} or return;
-        $ret .= $value->{map};
+        $ret{ $part_spec->{name} } = $input_part;
     }
 
-    return [$ret,$raw];
+    return \%ret;
 }
 
 sub error($self,$message) {
