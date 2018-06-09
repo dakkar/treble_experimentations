@@ -168,8 +168,8 @@ my @variant_parts = (
         name => 'su',
         desc => 'su selection',
         values => {
-            su => { desc => 'to include su', map => 'S' },
-            nosu => { desc => 'to not include su', map => 'N' },
+            su => { desc => 'to include su' },
+            nosu => { desc => 'to not include su' },
         },
     },
 );
