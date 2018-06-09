@@ -81,6 +81,11 @@ sub sync($self) {
 }
 
 
+sub mk_name($self,$variant) {
+    return sprintf 'treble_%s_%s%s%s',
+        $variant->@{qw(cpu partition apps su)};
+}
+
 my %apps_script = (
     gapps => 'device/phh/treble/gapps.mk',
     go => 'device/phh/treble/gapps-go.mk',
@@ -88,7 +93,8 @@ my %apps_script = (
     custom => 'custom-apps.mk',
 );
 sub generate_variant($self,$variant) {
-    open my $fh,'>',"device/phh/treble/$variant->{name}.mk";
+    my $product_name = $self->mk_name($variant);
+    open my $fh,'>',"device/phh/treble/$product_name.mk";
 
     print $fh "\$(call inherit-product, device/phh/treble/base-pre.mk)\n";
     print $fh "include build/make/target/product/treble_common.mk\n";
@@ -106,7 +112,7 @@ sub generate_variant($self,$variant) {
         print $fh "\$(call inherit-product, device/phh/treble/${rom}.mk)\n";
     }
 
-    print $fh "PRODUCT_NAME := $variant->{name}\n";
+    print $fh "PRODUCT_NAME := $product_name\n";
     my $part_suffix = $variant->{partition} eq 'aonly' ? 'a' : 'ab';
     print $fh "PRODUCT_DEVICE := phhgsi_$variant->{cpu}_${part_suffix}\n";
     print $fh "PRODUCT_BRAND := Android\n";
@@ -128,7 +134,8 @@ SH
 
     for my $variant ($self->{variants}->@*) {
         $self->generate_variant($variant);
-        print $fh "\t\$(LOCAL_DIR)/$variant->{name}.mk \\\n";
+        my $product_name = $self->mk_name($variant);
+        print $fh "\t\$(LOCAL_DIR)/$product_name.mk \\\n";
     }
 
     print $fh "\n";
@@ -159,7 +166,7 @@ sub build_variant($self,$variant) {
     $self->_shell(
         {
             $self->%{qw(jobs release extra_make_options)},
-            name => $variant->{name},
+            name => $self->mk_name($variant),
         },
         <<'SH',
 . build/envsetup.sh
