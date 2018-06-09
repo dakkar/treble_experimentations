@@ -45,6 +45,15 @@ clone this repository, then:
         arm-aonly-gapps-su \
         arm64-ab-go-nosu
 
+or (using `build-dakkar`):
+
+    ./docker-build ../treble_output \
+        rr \
+        arm-aonly-gapps-su \
+        arm64-ab-go-nosu
+
+*Important:* the output tree must be mounted rw+exec
+
 # Conventions for commit messages:
 
 * `[UGLY]` Please make this patch disappear as soon as possible
