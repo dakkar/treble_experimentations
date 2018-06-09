@@ -18,7 +18,11 @@ use lib $libdir;
 use Dakkar::PerlFlavour;
 use Dakkar::PlatformInfo;
 use Dakkar::Getopt;
-use Dakkar::BuildTools;
+use Dakkar::Init;
+use Dakkar::Sync;
+use Dakkar::Patch;
+use Dakkar::Generate;
+use Dakkar::Build;
 
 my %options = (
     pretend => {
@@ -181,15 +185,18 @@ my $getopt = Dakkar::Getopt->new({
 });
 
 my $parsed_options = $getopt->parse_opts(@ARGV) or exit 1;
-
-my $build = Dakkar::BuildTools->new({
+my %all_options = (
     basedir => $thisdir,
     $parsed_options->%{qw(pretend jobs release variants rom_type)},
     $rom_types{$parsed_options->{rom_type}}->%*,
-});
+);
 
-$build->init;
-$build->sync unless $parsed_options->{no_sync};
-$build->patch unless $parsed_options->{no_patch};
-$build->generate unless $parsed_options->{no_generate};
-$build->build unless $parsed_options->{no_build};
+Dakkar::Init->new(\%all_options)->init;
+Dakkar::Sync->new(\%all_options)->sync
+    unless $parsed_options->{no_sync};
+Dakkar::Patch->new(\%all_options)->patch
+    unless $parsed_options->{no_patch};
+Dakkar::Generate->new(\%all_options)->generate
+    unless $parsed_options->{no_generate};
+Dakkar::Build->new(\%all_options)->build
+    unless $parsed_options->{no_build};
