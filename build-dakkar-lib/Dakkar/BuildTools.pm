@@ -179,10 +179,11 @@ SH
 }
 
 sub build($self) {
-    $self->_shell(
-        { release => $self->{release} },
-        'repo manifest -r > release/"$release"/manifest.xml',
-    );
+    $self->_shell({ release => $self->{release} },<<'SH');
+. build/envsetup.sh
+repo manifest -r > release/"$release"/manifest.xml
+SH
+
     for my $variant ($self->{variants}->@*) {
         $self->build_variant($variant);
     }
