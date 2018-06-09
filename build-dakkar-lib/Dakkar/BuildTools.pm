@@ -155,7 +155,6 @@ SH
     }
     else {
         $self->_shell(\%env_for_shell, <<'SH');
-repo manifest -r > release/"$release"/manifest.xml
 bash "$basedir"/list-patches.sh
 cp patches.zip release/"$release"/patches.zip
 SH
@@ -180,6 +179,10 @@ SH
 }
 
 sub build($self) {
+    $self->_shell(
+        { release => $self->{release} },
+        'repo manifest -r > release/"$release"/manifest.xml',
+    );
     for my $variant ($self->{variants}->@*) {
         $self->build_variant($variant);
     }
